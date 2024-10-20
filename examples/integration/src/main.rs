@@ -25,6 +25,13 @@ use winit::{
 use std::sync::Arc;
 
 pub fn main() -> Result<(), winit::error::EventLoopError> {
+    #[cfg(target_arch = "wasm32")]
+    {
+        console_log::init().expect("Initialize logger");
+        std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     tracing_subscriber::fmt::init();
 
     // Initialize winit
@@ -99,9 +106,15 @@ pub fn main() -> Result<(), winit::error::EventLoopError> {
                             .request_device(
                                 &wgpu::DeviceDescriptor {
                                     label: None,
-                                    required_features: adapter_features
-                                        & wgpu::Features::default(),
-                                    required_limits: wgpu::Limits::default(),
+                                    required_features: adapter_features,
+                                    required_limits: if cfg!(
+                                        target_arch = "wasm32"
+                                    ) {
+                                        wgpu::Limits::downlevel_webgl2_defaults(
+                                        )
+                                    } else {
+                                        wgpu::Limits::default()
+                                    },
                                 },
                                 None,
                             )
